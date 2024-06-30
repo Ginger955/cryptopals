@@ -1,4 +1,4 @@
-package main
+package set1
 
 import (
 	"bytes"
@@ -8,9 +8,9 @@ import (
 	"slices"
 )
 
-func challenge4() {
+func Challenge4() {
 	minScore := frequencySum()
-	filename := `C:\Users\crist\GolandProjects\playground\encodings.txt`
+	filename := `C:\Users\crist\GolandProjects\playground\cryptopals\set1\5.txt`
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		log.Fatalf("failed to read file: %s", err.Error())
