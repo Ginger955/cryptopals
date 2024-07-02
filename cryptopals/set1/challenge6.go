@@ -32,7 +32,7 @@ func Challenge6() {
 		}
 
 		hammings := make([]data, 0)
-		for keysize := 2; keysize <= KEYSIZE && keysize*2 < len(decoded); keysize++ {
+		for keysize := 2; keysize <= KEYSIZE && keysize*2 <= len(decoded); keysize++ {
 			first := decoded[:keysize]
 			second := decoded[keysize : keysize*2]
 
@@ -58,7 +58,7 @@ func Challenge6() {
 
 func makeBlock(cipher []byte, keysize int) []byte {
 	var result = make([]byte, 0, len(cipher)%keysize)
-	for i := 0; i < len(cipher); i += keysize {
+	for i := 0; i < len(cipher) && keysize*(i+1) <= len(cipher); i += keysize {
 		result = append(result, cipher[keysize*i:keysize*(i+1)]...)
 	}
 
