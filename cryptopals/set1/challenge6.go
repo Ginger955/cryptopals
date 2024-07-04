@@ -16,11 +16,11 @@ const (
 
 type data struct {
 	keysize int
-	hamming int
+	hamming float64
 }
 
 func Challenge6() {
-	filename := `/home/cristian/GolandProjects/cryptopals/cryptopals/set1/6.txt`
+	filename := `C:\Users\crist\GolandProjects\playground\cryptopals\set1\6.txt`
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func Challenge6() {
 
 	const KEYSIZE = 40
 
-	lines := bytes.Split(content, []byte(LINUX_NEWLINE))
+	lines := bytes.Split(content, []byte(WINDOWS_NEWLINE))
 	for _, line := range lines {
 		var decoded = make([]byte, base64.StdEncoding.DecodedLen(len(line)))
 		_, err := base64.StdEncoding.Decode(decoded, line)
@@ -48,39 +48,61 @@ func Challenge6() {
 
 			hammings = append(hammings, data{
 				keysize: keysize,
-				hamming: h / keysize,
+				hamming: float64(h) / float64(keysize),
 			})
 		}
 
 		slices.SortFunc(hammings, func(a, b data) int {
 			return cmp.Compare(a.hamming, b.hamming)
 		})
-		for i, hamming := range hammings {
-			//TODO: take first n keys only
-			if i > 5 {
-				break
-			}
 
-			blocks := makeBlocks(line, hamming.keysize)
+		//only keep the top N performing key sizes that have the lowest hamming distance
+		for i, data := range getTopN(hammings, 5) {
+			fmt.Printf("dataset %d\n", i)
+			blocks := makeBlocks(line, data.keysize)
 			transposed := transposeBlocks(blocks)
 			for _, transposedBlock := range transposed {
-				var histogram = make(map[rune]int)
+				var byteFrequency = make(map[byte]int)
 				for b := 0; b < 256; b++ {
 					xored := xorWithByteKey(transposedBlock, byte(b))
-					runes := []rune(string(xored))
-					for _, r := range runes {
-						histogram[r]++
+					for _, x := range xored {
+						byteFrequency[x]++
 					}
 				}
 
-				//TODO: order histogram
-				for k, v := range histogram {
-					fmt.Printf("%c : %d\n", k, v)
+				var highest int
+				var order = make(map[int]byte)
+				for k, v := range byteFrequency {
+					//fmt.Printf("%c : %d\n", k, v)
+					if v > highest {
+						highest = v
+						order[v] = k
+					}
 				}
-				fmt.Println()
+
+				fmt.Printf("most frequent character: %c with %d occurences\n", order[highest], highest)
 			}
 		}
 	}
+}
+
+func getTopN(hammings []data, N int) []data {
+	var (
+		previous = hammings[0]
+		count    = 0
+		distinct = make([]data, 0, N)
+	)
+
+	distinct = append(distinct, previous)
+
+	for _, hamming := range hammings {
+		if previous.keysize != hamming.keysize && count < N {
+			distinct = append(distinct, hamming)
+			count++
+		}
+	}
+
+	return distinct
 }
 
 func mostLikelyKey(d []data) {
