@@ -28,9 +28,9 @@ func Challenge4() {
 		}
 
 		//try all ASCII characters as potential XOR key
-		for i := 0; i <= 256; i++ {
+		for i := 0; i < 256; i++ {
 			xored := xorWithByteKey(decoded, byte(i))
-			score := computeEnglishCompatibilityScore(xored)
+			score := computeEnglishScore(xored)
 			if score > minScore {
 				keyToXOR[byte(i)] = xored
 				scores = append(scores, score)

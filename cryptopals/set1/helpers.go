@@ -28,6 +28,24 @@ var frequency = map[rune]float32{
 	'L': 27.98,
 	'c': 23.13,
 	'C': 23.13,
+	'u': 18.51,
+	'U': 18.51,
+	'd': 17.25,
+	'D': 17.25,
+	'p': 16.14,
+	'P': 16.14,
+	'm': 15.36,
+	'M': 15.36,
+	'h': 15.31,
+	'H': 15.31,
+	'g': 12.59,
+	'G': 12.59,
+	'b': 10.56,
+	'B': 10.56,
+	'f': 9.24,
+	'F': 9.24,
+	'y': 9.06,
+	'Y': 9.06,
 }
 
 func frequencySum() float32 {
@@ -83,7 +101,7 @@ func xorRepeatingCycle(input, key []byte) []byte {
 	return result
 }
 
-func computeEnglishCompatibilityScore(input []byte) float32 {
+func computeEnglishScore(input []byte) float32 {
 	var score float32
 	runes := []rune(string(input))
 	for _, r := range runes {

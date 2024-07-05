@@ -19,8 +19,19 @@ type data struct {
 	hamming float64
 }
 
+type scoreTracker struct {
+	key      byte
+	decoding []byte
+	score    float32
+}
+
+type keyScore struct {
+	score float32
+	key   []byte
+}
+
 func Challenge6() {
-	filename := `C:\Users\crist\GolandProjects\playground\cryptopals\set1\6.txt`
+	filename := `/home/cristian/GolandProjects/cryptopals/cryptopals/set1/6.txt`
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		panic(err)
@@ -28,8 +39,9 @@ func Challenge6() {
 
 	const KEYSIZE = 40
 
-	lines := bytes.Split(content, []byte(WINDOWS_NEWLINE))
-	for _, line := range lines {
+	lines := bytes.Split(content, []byte(LINUX_NEWLINE))
+	for index, line := range lines {
+		fmt.Printf("line #%d\n", index+1)
 		var decoded = make([]byte, base64.StdEncoding.DecodedLen(len(line)))
 		_, err := base64.StdEncoding.Decode(decoded, line)
 		if err != nil {
@@ -57,32 +69,48 @@ func Challenge6() {
 		})
 
 		//only keep the top N performing key sizes that have the lowest hamming distance
+		//var keyScores = make([]keyScore, 0)
 		for i, data := range getTopN(hammings, 5) {
-			fmt.Printf("dataset %d\n", i)
+			fmt.Printf("key guess #%d, keysize: %d\n", i+1, data.keysize)
 			blocks := makeBlocks(line, data.keysize)
 			transposed := transposeBlocks(blocks)
+			var guessedKey = make([]byte, 0)
 			for _, transposedBlock := range transposed {
-				var byteFrequency = make(map[byte]int)
+				var scores = make([]scoreTracker, 0)
 				for b := 0; b < 256; b++ {
 					xored := xorWithByteKey(transposedBlock, byte(b))
-					for _, x := range xored {
-						byteFrequency[x]++
-					}
+					englishScore := computeEnglishScore(xored)
+					scores = append(scores, scoreTracker{
+						key:      byte(b),
+						score:    englishScore,
+						decoding: xored,
+					})
 				}
 
-				var highest int
-				var order = make(map[int]byte)
-				for k, v := range byteFrequency {
-					//fmt.Printf("%c : %d\n", k, v)
-					if v > highest {
-						highest = v
-						order[v] = k
-					}
-				}
+				slices.SortFunc(scores, func(a, b scoreTracker) int {
+					return cmp.Compare(a.score, b.score)
+				})
 
-				fmt.Printf("most frequent character: %c with %d occurences\n", order[highest], highest)
+				//bestN := 3
+				//for i := bestN - 1; i >= 0; i-- {
+				//	score := scores[len(scores)-1-i]
+				//	fmt.Printf("#%d key: %c, score: %f, decoding: %s\n", i+1, score.key, score.score, string(score.decoding))
+				//}
+				guessedKey = append(guessedKey, scores[len(scores)-1].key)
 			}
+
+			//fmt.Printf("guessed key: %s\n", string(guessedKey))
+			//keyScores = append(keyScores, keyScore{
+			//	score: computeEnglishScore(guessedKey),
+			//	key:   guessedKey,
+			//})
 		}
+
+		//slices.SortFunc(keyScores, func(a, b keyScore) int {
+		//	return cmp.Compare(a.score, b.score)
+		//})
+		//
+		//fmt.Printf("best looking key: %s\n", string(keyScores[len(keyScores)-1].key))
 	}
 }
 
@@ -103,10 +131,6 @@ func getTopN(hammings []data, N int) []data {
 	}
 
 	return distinct
-}
-
-func mostLikelyKey(d []data) {
-
 }
 
 func makeBlocks(cipher []byte, keysize int) [][]byte {
