@@ -79,7 +79,7 @@ func Challenge6() {
 func averageHammingDistance(decoded []byte, keysize int) float32 {
 	var distances []float64
 	for i := 0; i+2*keysize <= len(decoded); i += keysize {
-		d1 := decoded[i:keysize]
+		d1 := decoded[i : i+keysize]
 		d2 := decoded[i+keysize : i+(2*keysize)]
 		distance, err := hammingDistance(d1, d2)
 		if err != nil {
