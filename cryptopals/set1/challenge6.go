@@ -1,12 +1,10 @@
 package set1
 
 import (
-	"bytes"
-	"cmp"
 	"encoding/base64"
 	"fmt"
 	"os"
-	"slices"
+	"sort"
 )
 
 const (
@@ -15,19 +13,13 @@ const (
 )
 
 type data struct {
-	keysize int
-	hamming float64
+	keysize      int
+	hammingScore float32
 }
 
-type scoreTracker struct {
-	key      byte
-	decoding []byte
-	score    float32
-}
-
-type keyScore struct {
-	score float32
-	key   []byte
+type keyOutputScoreTracker struct {
+	key          byte
+	englishScore float32
 }
 
 func Challenge6() {
@@ -37,100 +29,70 @@ func Challenge6() {
 		panic(err)
 	}
 
+	var decoded = make([]byte, base64.StdEncoding.DecodedLen(len(content)))
+	n, err := base64.StdEncoding.Decode(decoded, content)
+	if err != nil {
+		panic(err)
+	}
+	decoded = decoded[:n]
+
 	const KEYSIZE = 40
+	hammings := make([]data, 0)
+	for keysize := 2; keysize <= KEYSIZE; keysize++ {
+		normalizedDistance := averageHammingDistance(decoded, keysize)
+		hammings = append(hammings, data{
+			keysize:      keysize,
+			hammingScore: normalizedDistance,
+		})
+	}
 
-	lines := bytes.Split(content, []byte(LINUX_NEWLINE))
-	for index, line := range lines {
-		fmt.Printf("line #%d\n", index+1)
-		var decoded = make([]byte, base64.StdEncoding.DecodedLen(len(line)))
-		_, err := base64.StdEncoding.Decode(decoded, line)
-		if err != nil {
-			panic(err)
-		}
+	sort.Slice(hammings, func(i, j int) bool {
+		return hammings[i].hammingScore < hammings[j].hammingScore
+	})
 
-		hammings := make([]data, 0)
-		for keysize := 2; keysize <= KEYSIZE && keysize*2 <= len(decoded); keysize++ {
-			first := decoded[:keysize]
-			second := decoded[keysize : keysize*2]
-
-			h, err := hammingDistance(first, second)
-			if err != nil {
-				panic(err)
-			}
-
-			hammings = append(hammings, data{
-				keysize: keysize,
-				hamming: float64(h) / float64(keysize),
+	blocks := makeBlocks(decoded, hammings[0].keysize)
+	transposed := transposeBlocks(blocks)
+	var guessedKey = make([]byte, 0)
+	for _, transposedBlock := range transposed {
+		var scores = make([]keyOutputScoreTracker, 0)
+		for b := 0; b < 256; b++ {
+			xored := xorWithByteKey(transposedBlock, byte(b))
+			englishScore := computeEnglishScore(xored)
+			scores = append(scores, keyOutputScoreTracker{
+				key:          byte(b),
+				englishScore: englishScore,
 			})
 		}
 
-		slices.SortFunc(hammings, func(a, b data) int {
-			return cmp.Compare(a.hamming, b.hamming)
+		sort.Slice(scores, func(i, j int) bool {
+			return scores[i].englishScore > scores[j].englishScore
 		})
 
-		//only keep the top N performing key sizes that have the lowest hamming distance
-		//var keyScores = make([]keyScore, 0)
-		for i, data := range getTopN(hammings, 5) {
-			fmt.Printf("key guess #%d, keysize: %d\n", i+1, data.keysize)
-			blocks := makeBlocks(line, data.keysize)
-			transposed := transposeBlocks(blocks)
-			var guessedKey = make([]byte, 0)
-			for _, transposedBlock := range transposed {
-				var scores = make([]scoreTracker, 0)
-				for b := 0; b < 256; b++ {
-					xored := xorWithByteKey(transposedBlock, byte(b))
-					englishScore := computeEnglishScore(xored)
-					scores = append(scores, scoreTracker{
-						key:      byte(b),
-						score:    englishScore,
-						decoding: xored,
-					})
-				}
-
-				slices.SortFunc(scores, func(a, b scoreTracker) int {
-					return cmp.Compare(a.score, b.score)
-				})
-
-				//bestN := 3
-				//for i := bestN - 1; i >= 0; i-- {
-				//	score := scores[len(scores)-1-i]
-				//	fmt.Printf("#%d key: %c, score: %f, decoding: %s\n", i+1, score.key, score.score, string(score.decoding))
-				//}
-				guessedKey = append(guessedKey, scores[len(scores)-1].key)
-			}
-
-			//fmt.Printf("guessed key: %s\n", string(guessedKey))
-			//keyScores = append(keyScores, keyScore{
-			//	score: computeEnglishScore(guessedKey),
-			//	key:   guessedKey,
-			//})
-		}
-
-		//slices.SortFunc(keyScores, func(a, b keyScore) int {
-		//	return cmp.Compare(a.score, b.score)
-		//})
-		//
-		//fmt.Printf("best looking key: %s\n", string(keyScores[len(keyScores)-1].key))
+		guessedKey = append(guessedKey, scores[0].key)
 	}
+
+	decrypted := xorRepeatingCycle(decoded, guessedKey)
+	fmt.Printf("guessed output: %s\n", decrypted)
+	fmt.Printf("guessed key: %s\n", guessedKey)
 }
 
-func getTopN(hammings []data, N int) []data {
-	var (
-		previous = hammings[0]
-		count    = 0
-		distinct = make([]data, 0, N)
-	)
-
-	distinct = append(distinct, previous)
-
-	for _, hamming := range hammings {
-		if previous.keysize != hamming.keysize && count < N {
-			distinct = append(distinct, hamming)
-			count++
+func averageHammingDistance(decoded []byte, keysize int) float32 {
+	var distances []float64
+	for i := 0; i+2*keysize <= len(decoded); i += keysize {
+		d1 := decoded[i:keysize]
+		d2 := decoded[i+keysize : i+(2*keysize)]
+		distance, err := hammingDistance(d1, d2)
+		if err != nil {
+			panic(err)
 		}
+		normalized := float64(distance) / float64(keysize)
+		distances = append(distances, normalized)
 	}
-
-	return distinct
+	var total float64
+	for _, d := range distances {
+		total += d
+	}
+	return float32(total / float64(len(distances)))
 }
 
 func makeBlocks(cipher []byte, keysize int) [][]byte {
@@ -146,7 +108,7 @@ func transposeBlocks(blocks [][]byte) [][]byte {
 	rows := len(blocks)
 	cols := len(blocks[0])
 
-	//blocks = dim(r x c0
+	//blocks = dim(r x c)
 	//transposed = dim(c x r)
 
 	var transposedBlocks = make([][]byte, cols)
