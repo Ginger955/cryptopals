@@ -23,7 +23,7 @@ type keyOutputScoreTracker struct {
 }
 
 func Challenge6() {
-	filename := `/home/cristian/GolandProjects/cryptopals/cryptopals/set1/6.txt`
+	filename := `cryptopals/set1/6.txt`
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		panic(err)

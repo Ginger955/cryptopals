@@ -10,7 +10,7 @@ import (
 
 func Challenge4() {
 	minScore := frequencySum()
-	filename := `C:\Users\crist\GolandProjects\playground\cryptopals\set1\5.txt`
+	filename := `cryptopals/set1/5.txt`
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		log.Fatalf("failed to read file: %s", err.Error())
