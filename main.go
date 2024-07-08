@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	set1.Challenge7()
+	set1.Challenge8()
 }
