@@ -8,7 +8,6 @@ import (
 )
 
 func Challenge7() {
-
 	const FILE = "cryptopals/set1/7.txt"
 	const KEY = "YELLOW SUBMARINE"
 
@@ -28,8 +27,18 @@ func Challenge7() {
 		panic(err)
 	}
 
-	var decrypted = make([]byte, 10000)
-	aes128.Decrypt(decrypted, decoded)
+	var decrypted = make([]byte, 0)
 
-	fmt.Printf("decrypted: %s\n", string(decrypted))
+	for len(decoded) >= aes128.BlockSize() {
+		var current = make([]byte, aes128.BlockSize())
+		if len(decoded[aes128.BlockSize():]) == 0 {
+			aes128.Decrypt(current, decoded[:aes128.BlockSize()])
+		} else {
+			aes128.Decrypt(current, decoded[aes128.BlockSize():])
+		}
+		decrypted = append(decrypted, current...)
+		decoded = decoded[aes128.BlockSize():]
+	}
+
+	fmt.Println(string(decrypted))
 }
