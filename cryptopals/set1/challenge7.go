@@ -29,6 +29,7 @@ func Challenge7() {
 
 	var decrypted = make([]byte, 0)
 
+	//this works great, dont touch it!!!
 	for len(decoded) >= aes128.BlockSize() {
 		var current = make([]byte, aes128.BlockSize())
 		if len(decoded[aes128.BlockSize():]) == 0 {
