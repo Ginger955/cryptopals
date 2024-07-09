@@ -1,9 +1,9 @@
 package main
 
 import (
-	"playground/cryptopals/set1"
+	"playground/cryptopals/set2"
 )
 
 func main() {
-	set1.Challenge8()
+	set2.Challenge9()
 }
