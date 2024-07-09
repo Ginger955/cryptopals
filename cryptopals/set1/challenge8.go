@@ -2,13 +2,13 @@ package set1
 
 import (
 	"bytes"
-	"hash/maphash"
+	"encoding/hex"
+	"fmt"
 	"os"
 )
 
 func Challenge8() {
 	const FILE = "cryptopals/set1/8.txt"
-	const KEY = "YELLOW SUBMARINE"
 
 	content, err := os.ReadFile(FILE)
 	if err != nil {
@@ -17,38 +17,32 @@ func Challenge8() {
 
 	split := bytes.Split(content, []byte("\n"))
 
-	for _, line := range split {
-		decoded, err := decodeHex(line)
-		if err != nil {
-			panic(err)
-		}
-
-		//fmt.Println(string(decoded))
-		//to crack, take a block the size of 16 or 32 bytes and check how frequent the same sequence repeats
-		countFrequency16(decoded)
-
+	for i, line := range split {
+		//to detect, take blocks the size of 16 or 32 bytes and check how frequent the same sequence repeats
+		countFrequency16(line, i)
 	}
 
 }
 
-func countFrequency16(input []byte) {
-	var freq = make(map[uint64]int)
-	hash := maphash.Hash{}
-	for i := 0; i <= len(input)-16; i += 16 {
-		block := input[i : i+16]
+func countFrequency16(input []byte, j int) {
+	const BlockSize = 16
+	var freq = make(map[string]uint)
+	for i := 0; i <= len(input)-BlockSize; i += BlockSize {
+		block := input[i : i+BlockSize]
 
-		_, err := hash.Write(block)
-		if err != nil {
-			panic(err)
-		}
-
-		v := hash.Sum64()
-		freq[v]++
-
-		hash.Reset()
+		//the same byte slice will encode to the same hex string, so this is a good way to keep track of repeating byte sequences
+		hex := hex.EncodeToString(block)
+		freq[hex]++
 	}
 
-	for k, v := range freq {
+	var max uint64
+	for _, v := range freq {
+		if max < uint64(v) {
+			max = uint64(v)
+		}
+	}
 
+	if max > 1 {
+		fmt.Printf("line #%d is likely AES ECB encrypted\n", j)
 	}
 }
